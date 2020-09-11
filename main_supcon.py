@@ -9,6 +9,7 @@ import math
 import tensorboard_logger as tb_logger
 import torch
 import torch.backends.cudnn as cudnn
+import tiny_imagenet
 from torchvision import transforms, datasets
 
 from util import TwoCropTransform, AverageMeter
@@ -29,19 +30,19 @@ def parse_option():
 
     parser.add_argument('--print_freq', type=int, default=10,
                         help='print frequency')
-    parser.add_argument('--save_freq', type=int, default=50,
+    parser.add_argument('--save_freq', type=int, default=1,
                         help='save frequency')
     parser.add_argument('--batch_size', type=int, default=256,
                         help='batch_size')
     parser.add_argument('--num_workers', type=int, default=16,
                         help='num of workers to use')
-    parser.add_argument('--epochs', type=int, default=1000,
+    parser.add_argument('--epochs', type=int, default=200,
                         help='number of training epochs')
 
     # optimization
     parser.add_argument('--learning_rate', type=float, default=0.05,
                         help='learning rate')
-    parser.add_argument('--lr_decay_epochs', type=str, default='700,800,900',
+    parser.add_argument('--lr_decay_epochs', type=str, default='140,160,180',
                         help='where to decay lr, can be a list')
     parser.add_argument('--lr_decay_rate', type=float, default=0.1,
                         help='decay rate for learning rate')
@@ -57,7 +58,7 @@ def parse_option():
     parser.add_argument('--mean', type=str, help='mean of dataset in path in form of str tuple')
     parser.add_argument('--std', type=str, help='std of dataset in path in form of str tuple')
     parser.add_argument('--data_folder', type=str, default=None, help='path to custom dataset')
-    parser.add_argument('--size', type=int, default=32, help='parameter for RandomResizedCrop')
+    parser.add_argument('--size', type=int, default=64  , help='parameter for RandomResizedCrop')
 
     # method
     parser.add_argument('--method', type=str, default='SupCon',
@@ -80,11 +81,12 @@ def parse_option():
     opt = parser.parse_args()
 
     # check if dataset is path that passed required arguments
+    """
     if opt.dataset == 'path':
         assert opt.data_folder is not None \
             and opt.mean is not None \
             and opt.std is not None
-
+    """
     # set the path according to the environment
     if opt.data_folder is None:
         opt.data_folder = './datasets/'
@@ -137,8 +139,8 @@ def set_loader(opt):
         mean = (0.5071, 0.4867, 0.4408)
         std = (0.2675, 0.2565, 0.2761)
     elif opt.dataset == 'path':
-        mean = eval(opt.mean)
-        std = eval(opt.mean)
+        mean = (0.485, 0.456, 0.406)
+        std = (0.229, 0.224, 0.225)
     else:
         raise ValueError('dataset not supported: {}'.format(opt.dataset))
     normalize = transforms.Normalize(mean=mean, std=std)
@@ -163,7 +165,7 @@ def set_loader(opt):
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = datasets.ImageFolder(root=opt.data_folder,
+        train_dataset = TinyImageNet(opt.data_folder,'train',
                                             transform=TwoCropTransform(train_transform))
     else:
         raise ValueError(opt.dataset)
